@@ -1,0 +1,26 @@
+name: Deploy develop via SSH
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: develop
+    steps:
+      - name: Run deploy commands on server
+        if: github.ref_name == 'develop'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SSH_HOST }}
+          username: ${{ vars.SSH_USER }}
+          port: ${{ vars.SSH_PORT }}
+          key: ${{ vars.SSH_KEY }}
+          script: |
+            cd /app/opencex/backend/
+            git checkout develop
+            git pull
+            cd /app/opencex/
+            sudo docker compose restart
