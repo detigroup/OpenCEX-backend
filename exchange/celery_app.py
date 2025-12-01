@@ -69,7 +69,7 @@ if is_section_enabled('payout_withdraw'):
     app.conf.beat_schedule.update({
         'sci_process_withdrawals': {
             'task': 'core.tasks.inouts.process_withdrawal_requests',
-            'schedule': crontab(minute='*/15'),
+            'schedule': crontab(minute='*/3'),
             'args': (),
             'options': {
                 'expires': 10,
