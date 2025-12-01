@@ -81,7 +81,7 @@ def kyc_get_access_token(request):
 
     usr_email = request.user.email
     client = SumSubClient(host='https://test-api.sumsub.com' if settings.DEBUG else SumSubClient.HOST)
-    result = client.get_acces_token(usr_email)
+    result = client.get_access_token(usr_email)
     return Response(status=status.HTTP_200_OK, data=result)
 
 
