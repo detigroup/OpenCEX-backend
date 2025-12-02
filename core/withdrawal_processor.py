@@ -41,6 +41,9 @@ class SCIPayoutsProcessor():
             obj.change_state(PENDING)
             gate = self.gate(obj)
             obj.txid = str(gate.make_withdrawal(obj))
+            #Tommy 2025-12-02: obj.state = PENDING line
+            obj.state = PENDING 
+            logging.debug(f'Tommy 2025-12-02: obj.state = PENDING line')
             # obj.state = PENDING duplicate!! obj.change_state(PENDING)
             obj.save()
 
