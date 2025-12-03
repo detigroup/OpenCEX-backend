@@ -42,6 +42,7 @@ class SCIPayoutsProcessor():
             gate = self.gate(obj)
             obj.txid = str(gate.make_withdrawal(obj))
             # obj.state = PENDING duplicate!! obj.change_state(PENDING)
+            obj.state = PENDING
             obj.save()
 
     def gate(self, obj: WithdrawalRequest):
