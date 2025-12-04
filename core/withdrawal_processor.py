@@ -15,9 +15,13 @@ class SCIPayoutsProcessor():
     STOP_ON_ERROR = False
 
     def start(self):
+        qs_limited = qs[:self.PROCESS_LIMIT]
+        logging.info(f'PAYOUT QUERYSET (LIMITED) SIZE: {len(qs_limited)}')
+
         if not settings.PAYOUTS_PROCESSING_ENABLED:
             return
-        for request in self.queryset()[:self.PROCESS_LIMIT]:
+        # for request in self.queryset()[:self.PROCESS_LIMIT]:
+        for request in qs_limited:
             try:
                 self.process_request(request)
             except Exception:
@@ -28,7 +32,7 @@ class SCIPayoutsProcessor():
 
     def process_request(self, request: WithdrawalRequest):
         # TODO: better check for race conditions!
-        logging.info(f'Tommy 2025-12-02: obj.state = process_request line')
+        logging.info('Tommy 2025-12-02: obj.state = process_request line') 
         request = request.__class__.objects.get(id=request.id)  # get fresh version
         if request.state == CREATED and request.transaction.state == TRANSACTION_COMPLETED:
             self.update_withdrwal_state(request)
@@ -44,7 +48,7 @@ class SCIPayoutsProcessor():
             obj.txid = str(gate.make_withdrawal(obj))
             #Tommy 2025-12-02: obj.state = PENDING line
             obj.state = PENDING 
-            logging.info(f'Tommy 2025-12-02: obj.state = PENDING line')
+            logging.info('Tommy 2025-12-02: obj.state = PENDING line')
             # obj.state = PENDING duplicate!! obj.change_state(PENDING)
             obj.save()
 
