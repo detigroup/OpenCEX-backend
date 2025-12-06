@@ -95,6 +95,7 @@ def withdrawal_failed_email(wd_id):
 @shared_task
 def process_withdrawal_requests():
     """Process fiat withdrawals"""
+    logging.info('Tommy check deploy') 
     lock_id = 'sci_process_withdrawal'
     with memcache_lock(lock_id, lock_id, expire=10 * 60) as acquired:
         if acquired:
