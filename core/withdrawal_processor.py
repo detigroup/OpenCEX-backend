@@ -15,14 +15,17 @@ class SCIPayoutsProcessor():
     STOP_ON_ERROR = False
 
     def start(self):
+        # Tommy 2025-12-04: add log
         qs_limited = qs[:self.PROCESS_LIMIT]
-        logging.info(f'PAYOUT QUERYSET (LIMITED) SIZE: {len(qs_limited)}')
+        logging.info(f' QUERYSET (LIMITED) SIZE: {len(qs_limited)}')
 
         if not settings.PAYOUTS_PROCESSING_ENABLED:
+            
             return
         # for request in self.queryset()[:self.PROCESS_LIMIT]:
         for request in qs_limited:
             try:
+                logging.info(f'REQUEST DATA: {request.__dict__}')
                 self.process_request(request)
             except Exception:
                 logging.error(f'There was an exception durin request #{request.id} processing', exc_info=True)
