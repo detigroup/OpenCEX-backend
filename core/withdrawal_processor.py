@@ -15,13 +15,17 @@ class SCIPayoutsProcessor():
     STOP_ON_ERROR = False
 
     def start(self):
-        # Tommy 2025-12-04: add log
-        qs_limited = qs[:self.PROCESS_LIMIT]
-        logging.info(f' QUERYSET (LIMITED) SIZE: {len(qs_limited)}')
-
+       
         if not settings.PAYOUTS_PROCESSING_ENABLED:
-            
+            logging.info('Payouts processing is disabled in settings.')
             return
+        # Lấy queryset gốc
+        qs = list(self.queryset())
+
+        # Giới hạn số lượng cần xử lý + log size
+        qs_limited = qs[:self.PROCESS_LIMIT]
+        logging.info(f'QUERYSET (LIMITED) SIZE: {len(qs_limited)}')
+
         # for request in self.queryset()[:self.PROCESS_LIMIT]:
         for request in qs_limited:
             try:
