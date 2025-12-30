@@ -81,8 +81,10 @@ class Bot:
 
     def get_max_limit_nousers(self, sell_orders_qs, min_limit, max_limit):
         for order in sell_orders_qs:
+            # If sell order price is below or equal to the min_limit, skip it
+            # (previously returned None which caused instant-match to fail).
             if order.price <= min_limit:
-                return
+                continue
             if order.price > max_limit:
                 return max_limit
             if not self.is_bot_order(order):
@@ -91,8 +93,10 @@ class Bot:
 
     def get_min_limit_nousers(self, buy_orders_qs, min_limit, max_limit):
         for order in buy_orders_qs:
+            # If buy order price is above or equal to the max_limit, skip it
+            # (previously returned None which caused instant-match to fail).
             if order.price >= max_limit:
-                return
+                continue
             if order.price < min_limit:
                 return min_limit
             if not self.is_bot_order(order):
@@ -227,7 +231,10 @@ class Bot:
             self.log.exception("Unable to cancel orders: %s" % e)
         # cache.set(CACHED_BOT_ORDERS_KEYS + self.settings.name, self.orders, timeout=None)
         # cache.delete(ACTIVE_BOTS_CACHE_PREFIX + self.settings.name)
-        sys.exit()
+        # Avoid exiting the whole worker process; mark stopped and return so
+        # the caller (worker/task) can finish gracefully.
+        self.log.info("Bot exit completed (no sys.exit called)")
+        return
 
     def stop(self):
         self.log.info("Stopping bot...")
@@ -261,8 +268,9 @@ class Bot:
                       self.bot_config.name,
                       self.bot_config.pair,
                       money_format(min_ext_price),
-                      money_format(external_pair_price),
-                      money_format(max_ext_price))
+                    #   money_format(external_pair_price), Tommy
+                      money_format(max_ext_price,
+                      money_format(external_pair_price)))
 
         open_buy_orders, open_sell_orders = self.main_exchange.get_orders_stack()
 
@@ -278,9 +286,24 @@ class Bot:
             min_price_limit = self.get_min_limit_nousers(
                 open_buy_orders, min_ext_price, max_ext_price)
 
-            if not max_price_limit or not min_price_limit:
-                msg = f'Bot {self.bot_config.name} error:\nCan\'t set instant order' \
-                      f'\nMax price limit: {max_price_limit}\nMin price limit: {min_price_limit}'
+            # Be explicit about missing values (None) so we don't treat 0 as missing.
+            if max_price_limit is None or min_price_limit is None:
+                msg = (
+                    f"Bot {self.bot_config.name} error:\nCan't set instant order"
+                    f"\nMax price limit: {max_price_limit}\nMin price limit: {min_price_limit}"
+                    f"\nSell orders: {open_sell_orders}\nBuy orders: {open_buy_orders}"
+                )
+                if self.bot_config.create_order_error:
+                    send_telegram_message(msg)
+                raise BotExitCondition(msg)
+
+            # Sanity check: ensure min <= max
+            if min_price_limit > max_price_limit:
+                msg = (
+                    f"Bot {self.bot_config.name} error:\nInvalid instant order bounds"
+                    f"\nMax price limit: {max_price_limit}\nMin price limit: {min_price_limit}"
+                    f"\nSell orders: {open_sell_orders}\nBuy orders: {open_buy_orders}"
+                )
                 if self.bot_config.create_order_error:
                     send_telegram_message(msg)
                 raise BotExitCondition(msg)

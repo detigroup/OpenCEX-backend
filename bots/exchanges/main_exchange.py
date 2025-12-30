@@ -171,8 +171,13 @@ class MainExchange(BaseExchange):
                 buy_orders.append(order_entry)
             else:
                 sell_orders.append(order_entry)
+        # Tommy for ETH-BOT
+        buy_orders = [o for o in buy_orders if o.price is not None]
+        sell_orders = [o for o in sell_orders if o.price is not None]
 
-        buy_orders.sort(reverse=True)
+        buy_orders.sort(key=lambda o: float(o.price), reverse=True)
+        sell_orders.sort(key=lambda o: float(o.price))
+        # buy_orders.sort(reverse=True)
         return buy_orders, sell_orders
 
     def get_latest_ohlc_candle(self, interval) -> dict:
