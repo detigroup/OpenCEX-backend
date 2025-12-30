@@ -64,9 +64,7 @@ app.conf.task_queues += tuple(generated_queues)
 # evm coins tasks
 evm_queues = evm_handlers_manager.register_celery_tasks(app.conf.beat_schedule)
 app.conf.task_queues += tuple(evm_queues)
-# logging.info(b'Payout withdraw section enabled: {is_section_enabled('payout_withdraw')}')
 if is_section_enabled('payout_withdraw'):
-    # logging.info('Payout withdraw section enabled')
     app.conf.beat_schedule.update({
         'sci_process_withdrawals': {
             'task': 'core.tasks.inouts.process_withdrawal_requests',
