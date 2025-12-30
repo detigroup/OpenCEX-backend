@@ -132,7 +132,7 @@ class Bot:
 
     def make_order(self, order: OrderStruct):
         if order.side == OrderSide.SELL:
-            order_currency = self.pair.base.code
+            order_currency = self.pair.base.code  
             amount = order.quantity
         else:
             order_currency = self.pair.quote.code
@@ -268,9 +268,8 @@ class Bot:
                       self.bot_config.name,
                       self.bot_config.pair,
                       money_format(min_ext_price),
-                    #   money_format(external_pair_price), Tommy
-                      money_format(max_ext_price,
-                      money_format(external_pair_price)))
+                      money_format(external_pair_price),
+                      money_format(max_ext_price))
 
         open_buy_orders, open_sell_orders = self.main_exchange.get_orders_stack()
 
