@@ -39,6 +39,7 @@ urlpatterns = [
     path(r'wallet_withdrawal/', WithdrawalRequestView.as_view(actions={'post': 'create'})),  # TODO: remove. made for compatibility with frontend!
     path('sci/', include(sci_urls)),
     path(r'getcoinsstatus/', CoinsStatusView.as_view()),
+    path(r'internal/transfer/', TransferByEmailView.as_view()),
     path(r'limits/', FeesLimitsView.as_view()),
     path(r'withdrawalfees/<currency>/', WithdrawalFeeView.as_view()),
 ]

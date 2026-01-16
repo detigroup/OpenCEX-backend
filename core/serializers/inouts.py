@@ -53,6 +53,19 @@ class TopupSerializer(serializers.ModelSerializer, TopupLimitsMixIn, CurrencyAmo
         return super(TopupSerializer, self).validate(attrs)
 
 
+class TransferByEmailSerializer(serializers.Serializer):
+    from_email = serializers.EmailField(required=False)
+    to_email = serializers.EmailField()
+    currency = CurrencySerialField()
+    amount = serializers.DecimalField(max_digits=32, decimal_places=8)
+
+    def validate(self, attrs):
+        # basic checks done in view (user context needed)
+        if attrs['amount'] <= 0:
+            raise ValidationError('Amount must be positive')
+        return attrs
+
+
 class SciWithdrawalSerializerMixIn(object):
     """ only fiat and gate_id is needed """
 
