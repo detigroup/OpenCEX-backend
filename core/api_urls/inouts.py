@@ -4,7 +4,7 @@ from django.urls.conf import include
 from rest_framework.routers import DefaultRouter
 
 from core.views.inouts import BalanceView, PortfolioBalanceView, TopupRequestView, interaction, \
-    interaction_dev, topup_amount, check_status_topup, withdraw_amount, BalanceByCurrencyView
+    interaction_dev, topup_amount, check_status_topup, withdraw_amount, BalanceByCurrencyView, TransferByEmailView
 from core.views.inouts import CoinsStatusView
 from core.views.inouts import FeesLimitsView
 from core.views.inouts import WithdrawalFeeView
@@ -39,6 +39,7 @@ urlpatterns = [
     path(r'wallet_withdrawal/', WithdrawalRequestView.as_view(actions={'post': 'create'})),  # TODO: remove. made for compatibility with frontend!
     path('sci/', include(sci_urls)),
     path(r'getcoinsstatus/', CoinsStatusView.as_view()),
+    path(r'internal/transfer/', TransferByEmailView.as_view()),
     path(r'limits/', FeesLimitsView.as_view()),
     path(r'withdrawalfees/<currency>/', WithdrawalFeeView.as_view()),
 ]

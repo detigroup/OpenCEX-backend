@@ -27,6 +27,7 @@ from core.models.inouts.sci import GATES, PayGateTopup, name2id
 from core.models.inouts.transaction import Transaction
 from core.models.inouts.withdrawal import WithdrawalRequest
 from core.serializers.inouts import LastCryptoWithdrawalAddressesSerializer, TopupSerializer
+from core.serializers.inouts import TransferByEmailSerializer
 from core.serializers.inouts import TransactionSerizalizer
 from lib.filterbackend import FilterBackend
 from lib.utils import generate_random_string
@@ -379,6 +380,92 @@ class WithdrawalFeeView(GenericAPIView):
             return Response(status=status.HTTP_200_OK, data=fee)
         except Exception as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': str(e)})
+
+
+class TransferByEmailView(GenericAPIView):
+    """Authenticated endpoint to perform zero-fee internal transfer by recipient email."""
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = TransferByEmailSerializer
+
+    @extend_schema(
+        request=TransferByEmailSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        summary='Internal transfer by recipient email',
+        description='Perform a zero-fee internal transfer between users by email (authenticated).'
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # currency model
+        currency = data['currency']
+        amount = data['amount']
+        to_email = data['to_email']
+
+        # disabled coin check
+        from core.utils.inouts import is_coin_disabled
+        from core.consts.inouts import DISABLE_WITHDRAWALS
+        from core.models.facade import UserKYC
+        from django.conf import settings
+        from django.contrib.auth.models import User
+        from core.models.inouts.withdrawal import WithdrawalUserLimit
+
+        if is_coin_disabled(currency.code, DISABLE_WITHDRAWALS):
+            raise ValidationError({'message': f'InOuts for {currency.code} disabled!', 'type': 'inouts_disable'})
+
+        if request.user.restrictions.disable_withdrawals:
+            raise ValidationError({'message': 'Withdrawal creation is restricted', 'type': 'user_disable_withdrawals'})
+
+        # KYC enforcement (if required)
+        if getattr(settings, 'IS_KYC_REQUIRED', False) and not UserKYC.valid_for_user(request.user):
+            raise ValidationError({'message': 'KYC required', 'type': 'kyc_required'})
+
+        # check recipient existence
+        recipient = User.objects.filter(email__iexact=to_email).first()
+        if not recipient:
+            raise ValidationError({'message': 'Recipient not found', 'type': 'recipient_not_found'})
+
+        # check user limits (reuse withdrawal limits logic - uses USDT equivalent)
+        limit_data = WithdrawalUserLimit.get_limits(request.user)
+        user_limit = limit_data.get('limit')
+        amount_usdt = amount
+        if currency != Currency.get('USDT'):
+            from core.cache import external_exchanges_pairs_price_cache
+            price = external_exchanges_pairs_price_cache.get(f'{currency.code}-USDT', 1)
+            amount_usdt = amount * price
+
+        if limit_data.get('amount', 0) + amount_usdt > user_limit.amount:
+            raise ValidationError({'message': 'Out of limit!', 'type': 'out_of_limit'})
+
+        # perform atomic transfer: withdrawal (sender) and topup (recipient)
+        try:
+            from django.db import transaction
+            with transaction.atomic():
+                withdraw_tx = Transaction.withdrawal(
+                    user_id=request.user.id,
+                    currency=currency,
+                    amount=-amount,
+                    data={'internal': {'method': 'email', 'to': to_email}},
+                )
+
+                topup_tx = Transaction.topup(
+                    user_id=recipient.id,
+                    currency=currency,
+                    amount=amount,
+                    data={'internal': {'method': 'email', 'from': request.user.email}},
+                )
+
+                withdraw_tx.internal = {'type': 'email_transfer', 'paired_tx': topup_tx.id, 'to': to_email, 'from': request.user.email}
+                topup_tx.internal = {'type': 'email_transfer', 'paired_tx': withdraw_tx.id, 'to': to_email, 'from': request.user.email}
+
+                withdraw_tx.save()
+                topup_tx.save()
+
+        except Exception as e:
+            raise ValidationError({'message': str(e), 'type': 'transfer_failed'})
+
+        return Response({'status': 'ok', 'withdraw_tx': withdraw_tx.id, 'topup_tx': topup_tx.id})
 
 
 def generate_remittance_id():
